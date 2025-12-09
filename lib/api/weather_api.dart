@@ -86,6 +86,8 @@ class WeatherApi {
   
     final prefs = await SharedPreferences.getInstance();
     final apiKey = prefs.getString('weather_api_key')?.trim();
+    final lat = prefs.getString('weather_lat') ?? '-3.5952';
+    final lon = prefs.getString('weather_lon') ?? '98.6722';
   
     if (apiKey == null || apiKey.isEmpty) {
       print('❌ API key tidak ditemukan di pengaturan!');
@@ -96,8 +98,8 @@ class WeatherApi {
   
     // Pastikan URL benar-benar valid
     final url = 'https://api.openweathermap.org/data/2.5/forecast?'
-        'lat=-3.5952&'
-        'lon=98.6722&'
+        'lat=$lat&'
+        'lon=$lon&'
         'appid=$apiKey&'
         'units=metric&'
         'lang=id';

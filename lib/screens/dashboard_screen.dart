@@ -9,6 +9,7 @@ import '../widgets/moisture_card.dart';
 import '../widgets/water_tank_card.dart';
 import '../widgets/weather_forecast_card.dart';
 import '../widgets/chart_widget.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -33,8 +34,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final sensor = Provider.of<SensorProvider>(context);
-
-    // Simulasi rata-rata 7 hari (di proyek nyata, ambil dari database/histori MQTT)
     final avg7Days = (sensor.soilMoisture * 0.9 + 10).clamp(0.0, 100.0);
 
     return Scaffold(
@@ -71,7 +70,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Mode badge
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
@@ -132,6 +130,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.black,
         spacing: 16,
         children: [
+          // 1. Siram Sekarang
           SpeedDialChild(
             child: Icon(Icons.water_drop),
             label: 'Siram Sekarang',
@@ -144,18 +143,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _showSnackBar('Perintah siram dikirim!');
             },
           ),
+          // 2. Penyiraman → arahkan ke /schedule sebagai halaman utama penyiraman
           SpeedDialChild(
-            child: Icon(Icons.schedule),
-            label: 'Jadwal Siram',
+            child: Icon(Symbols.sprinkler), // atau Icons.auto_mode jika watering_can tidak dikenali
+            label: 'Penyiraman',
             labelStyle: TextStyle(fontWeight: FontWeight.w600),
             onTap: () => Navigator.pushNamed(context, '/schedule'),
           ),
-          SpeedDialChild(
-            child: Icon(Icons.timer),
-            label: 'Timer Siram',
-            labelStyle: TextStyle(fontWeight: FontWeight.w600),
-            onTap: () => Navigator.pushNamed(context, '/timer'),
-          ),
+          // 3. Pengaturan
           SpeedDialChild(
             child: Icon(Icons.settings),
             label: 'Pengaturan',
