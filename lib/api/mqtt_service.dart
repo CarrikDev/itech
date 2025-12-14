@@ -1,6 +1,8 @@
 // lib/api/mqtt_service.dart
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io'; // Diperlukan untuk SecurityContext
+import 'package:flutter/services.dart' show rootBundle; // Diperlukan untuk memuat aset
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,20 +12,27 @@ class MqttService {
   factory MqttService() => _instance;
   MqttService._internal();
 
-  late MqttServerClient client;
-  StreamController<Map<String, dynamic>> _sensorStreamController = StreamController.broadcast();
-  StreamController<Map<String, dynamic>> _statusStreamController = StreamController.broadcast();
+  MqttServerClient? _client;
+  final StreamController<Map<String, dynamic>> _sensorStreamController = StreamController.broadcast();
+  final StreamController<Map<String, dynamic>> _statusStreamController = StreamController.broadcast();
 
   Stream<Map<String, dynamic>> get sensorStream => _sensorStreamController.stream;
   Stream<Map<String, dynamic>> get statusStream => _statusStreamController.stream;
 
+  bool get isConnected => _client?.connectionStatus?.state == MqttConnectionState.connected;
+
   Future<void> connect() async {
+    if (isConnected) return;
+
     final prefs = await SharedPreferences.getInstance();
-    final broker = prefs.getString('mqtt_broker') ?? 'broker.hivemq.com';
-    final port = prefs.getInt('mqtt_port') ?? 1883;
+    // Ganti nilai default ini sesuai dengan broker EMQX Anda jika perlu
+    final broker = prefs.getString('mqtt_broker') ?? 'l18802f6.ala.eu-central-1.emqxsl.com'; 
+    final port = prefs.getInt('mqtt_port') ?? 8883; // Port 8883 (TLS)
+    final username = prefs.getString('mqtt_user');
+    final password = prefs.getString('mqtt_password');
     final clientId = 'SmartGardenApp_${DateTime.now().millisecondsSinceEpoch}';
 
-    client = MqttServerClient(broker, clientId);
+    final client = MqttServerClient(broker, clientId);
     client.port = port;
     client.logging(on: false);
     client.keepAlivePeriod = 30;
@@ -31,48 +40,116 @@ class MqttService {
     client.onConnected = onConnected;
     client.onSubscribed = onSubscribed;
 
+    // --- START: KONFIGURASI TLS ---
+    if (port == 8883 || port == 8884) {
+      print('🔒 [MQTT] Menggunakan koneksi aman (TLS) di port $port');
+      try {
+        final securityContext = await _getSecurityContext();
+        client.securityContext = securityContext;
+        client.secure = true;
+      } catch (e) {
+        print('❌ [MQTT] Gagal mengonfigurasi konteks keamanan TLS: $e');
+        // Hentikan koneksi jika konfigurasi TLS gagal
+        return; 
+      }
+    }
+    // --- END: KONFIGURASI TLS ---
+
+
+    // Set connectionMessage
+    client.connectionMessage = MqttConnectMessage()
+        .withClientIdentifier(clientId)
+        .startClean()
+        .withWillTopic('iot/plant/status')
+        .withWillMessage('{"is_online":false}')
+        .withWillQos(MqttQos.atLeastOnce);
+
     try {
-      await client.connect();
-      if (client.connectionStatus!.state == MqttConnectionState.connected) {
+      print('🔌 [MQTT] Mencoba koneksi ke broker: $broker');
+      print('   Port: $port');
+      print('   Client ID: SmartGardenApp_...');
+      if (username != null && username.isNotEmpty) {
+        print('   Username: $username');
+      }
+
+      await client.connect(username, password);
+
+      if (client.connectionStatus?.state == MqttConnectionState.connected) {
+        print('✅ [MQTT] Koneksi BERHASIL!');
+        _client = client;
+
+        print('📡 [MQTT] Subscribe ke topik: iot/plant/sensor');
         client.subscribe('iot/plant/sensor', MqttQos.atLeastOnce);
+        print('📡 [MQTT] Subscribe ke topik: iot/plant/status');
         client.subscribe('iot/plant/status', MqttQos.atLeastOnce);
 
         client.updates!.listen((List<MqttReceivedMessage<MqttMessage>> c) {
+          final topic = c[0].topic;
           final recMess = c[0].payload as MqttPublishMessage;
           final payload = String.fromCharCodes(recMess.payload.message);
+          print('📥 [MQTT] Diterima dari topik "$topic": $payload');
+
           try {
-            final data = Map<String, dynamic>.from(jsonDecode(payload));
-            if (c[0].topic == 'iot/plant/sensor') {
+            final data = jsonDecode(payload) as Map<String, dynamic>;
+            if (topic == 'iot/plant/sensor') {
               _sensorStreamController.add(data);
-            } else if (c[0].topic == 'iot/plant/status') {
+            } else if (topic == 'iot/plant/status') {
               _statusStreamController.add(data);
             }
           } catch (e) {
-            print('MQTT payload error: $e');
+            print('❌ [MQTT] Error parse payload: $e');
           }
         });
+      } else {
+        print('❌ [MQTT] Koneksi GAGAL: status tidak connected');
+        print('   Status: ${client.connectionStatus?.state}');
       }
-    } catch (e) {
-      print('MQTT connection error: $e');
+    } catch (e, stack) {
+      print('🔥 [MQTT] ERROR KONEKSI:');
+      print('   Pesan: $e');
+      print('   Stack trace: $stack');
+      _client = null;
     }
   }
 
-  void onConnected() => print('MQTT connected');
-  void onDisconnected() => print('MQTT disconnected');
-  void onSubscribed(String? topic) => print('Subscribed to $topic');
+  // Fungsi baru untuk memuat sertifikat CA dari aset
+  Future<SecurityContext> _getSecurityContext() async {
+    // Memuat file .crt dari folder assets
+    final buffer = await rootBundle.load('assets/certifications/emqxsl-ca.crt'); 
+    final List<int> bytes = buffer.buffer.asUint8List();
+    
+    final securityContext = SecurityContext.defaultContext;
+    // Menambahkan sertifikat CA sebagai otoritas yang dipercaya
+    securityContext.setClientAuthoritiesBytes(bytes); 
+    
+    return securityContext;
+  }
+  
+  // ... (onConnected, onDisconnected, onSubscribed, publishCommand, disconnect tetap sama) ...
+
+  void onConnected() {
+    print('MQTT connected');
+  }
+
+  void onDisconnected() {
+    print('MQTT disconnected');
+    _client = null;
+  }
+
+  void onSubscribed(String? topic) {
+    print('Subscribed to $topic');
+  }
 
   void publishCommand(Map<String, dynamic> command) {
-    if (client.connectionStatus?.state == MqttConnectionState.connected) {
-      final clientMqtt = client;
+    if (isConnected && _client != null) {
       final builder = MqttClientPayloadBuilder();
       builder.addString(jsonEncode(command));
-      clientMqtt.publishMessage('iot/plant/command', MqttQos.atLeastOnce, builder.payload!);
+      _client!.publishMessage('iot/plant/command', MqttQos.atLeastOnce, builder.payload!);
     }
   }
 
   void disconnect() {
-    client.disconnect();
-    _sensorStreamController.close();
-    _statusStreamController.close();
+    _client?.disconnect();
+    _client = null;
   }
 }

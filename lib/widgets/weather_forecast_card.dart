@@ -10,7 +10,6 @@ class WeatherForecastCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Ambil data unik dari forecast (maks 7)
     final uniqueDays = <DateTime, ForecastDay>{};
     for (var day in forecast.take(40)) {
       final date = DateTime(day.dateTime.year, day.dateTime.month, day.dateTime.day);
@@ -19,25 +18,18 @@ class WeatherForecastCard extends StatelessWidget {
       }
       if (uniqueDays.length >= 7) break;
     }
-  
-    // 2. Jika kurang dari 7 hari, tambahkan hari fiktif ke depan (opsi 1)
-    //    atau ke belakang (opsi 2). Kita pilih ke belakang → hari mendatang.
+
     final List<DateTime> displayDays = uniqueDays.keys.toList();
     final today = DateTime.now();
     final todayKey = DateTime(today.year, today.month, today.day);
-  
-    // 3. Tambahkan hari fiktif jika < 7
+
     while (displayDays.length < 7) {
-      final lastDate = displayDays.isEmpty
-          ? today
-          : displayDays.last;
-      final nextDay = lastDate.add(Duration(days: 1));
-      displayDays.add(nextDay);
+      final lastDate = displayDays.isEmpty ? today : displayDays.last;
+      displayDays.add(lastDate.add(const Duration(days: 1)));
     }
-  
-    // Ambil maks 7
+
     final finalDays = displayDays.take(7).toList();
-  
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -50,22 +42,23 @@ class WeatherForecastCard extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 12),
-            SizedBox(
-              height: 100,
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: 130, // ✅ Batas maksimal, bukan tetap
+              ),
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
+                shrinkWrap: true,
                 itemCount: finalDays.length,
                 itemBuilder: (context, index) {
                   final date = finalDays[index];
                   final isToday = DateTime(date.year, date.month, date.day) == todayKey;
-  
-                  // Cek apakah ada data cuaca untuk tanggal ini
                   final hasData = uniqueDays.containsKey(date);
                   final entry = uniqueDays[date];
-  
+
                   final dayName = DateFormat('EEE', 'id').format(date);
                   final dayDate = DateFormat('d').format(date);
-  
+
                   return Container(
                     width: 60,
                     margin: EdgeInsets.only(right: 12),
@@ -86,32 +79,50 @@ class WeatherForecastCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             height: 1.2,
-                            color: isToday ? Colors.white : null,
+                            color: isToday ? Colors.black : null,
                             fontWeight: isToday ? FontWeight.bold : null,
                           ),
                         ),
                         SizedBox(height: 4),
                         if (hasData && entry != null)
-                          Image.network(
-                            'https://openweathermap.org/img/wn/${entry.icon}@2x.png', // ✅ pastikan TIDAK ADA SPASI
-                            width: 32,
-                            height: 32,
-                            fit: BoxFit.contain,
+                          Column(
+                            children: [
+                              Image.network(
+                                'https://openweathermap.org/img/wn/${entry.icon}@2x.png',
+                                width: 32,
+                                height: 32,
+                                fit: BoxFit.contain,
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                '${entry.temp.toStringAsFixed(0)}°',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                                  color: isToday ? Colors.black : null,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                entry.description.split(' ').map((w) => w.capitalize()).join(' '),
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: isToday ? Colors.grey : Colors.grey,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           )
                         else
-                          Icon(Icons.cloud, size: 32, color: Colors.grey),
-                        SizedBox(height: 2),
-                        if (hasData && entry != null)
-                          Text(
-                            '${entry.temp.toStringAsFixed(0)}°',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                              color: isToday ? Colors.white : null,
-                            ),
-                          )
-                        else
-                          Text('-', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          Column(
+                            children: [
+                              Icon(Icons.cloud, size: 32, color: Colors.grey),
+                              SizedBox(height: 2),
+                              Text('-', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                              SizedBox(height: 2),
+                              Text('Tidak diketahui', style: TextStyle(fontSize: 9, color: Colors.grey)),
+                            ],
+                          ),
                       ],
                     ),
                   );
@@ -122,5 +133,11 @@ class WeatherForecastCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+extension StringExtension on String {
+  String capitalize() {
+    return isEmpty ? this : '${this[0].toUpperCase()}${substring(1)}';
   }
 }

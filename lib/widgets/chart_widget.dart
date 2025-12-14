@@ -1,16 +1,49 @@
 // lib/widgets/chart_widget.dart
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 
 class ChartWidget extends StatelessWidget {
-  final double moisture;
+  final String mode; // 'moisture', 'daily', 'timer', 'calendar'
+  final String? nextWatering; // ISO8601 string from IoT
+  final String? titleLabel;
+  final String? descriptionLabel;
 
-  const ChartWidget({Key? key, required this.moisture}) : super(key: key);
+  const ChartWidget({
+    Key? key,
+    required this.mode,
+    this.nextWatering,
+    this.titleLabel,
+    this.descriptionLabel,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Data dummy histori (misal 6 jam terakhir)
-    final List<double> dummyHistory = [40, 45, 50, 48, 42, moisture];
+    String mainText;
+    String title = titleLabel ?? 'Penyiraman Berikutnya';
+    String description = descriptionLabel ?? '';
+
+    if (mode == 'moisture') {
+      mainText = 'Sedang Mendeteksi...';
+      title = 'Deteksi Kelembapan';
+      description = 'Penyiraman akan dilakukan ketika kelembapan terdeteksi kering';
+    } else if (nextWatering == null) {
+      mainText = '--:--';
+    } else {
+      try {
+        final target = DateTime.parse(nextWatering!);
+        final now = DateTime.now();
+        if (target.isBefore(now)) {
+          mainText = 'Waktunya Menyiram!';
+        } else {
+          final diff = target.difference(now);
+          final h = diff.inHours % 24;
+          final m = diff.inMinutes % 60;
+          final s = diff.inSeconds % 60;
+          mainText = '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+        }
+      } catch (e) {
+        mainText = '--:--';
+      }
+    }
 
     return Card(
       child: Padding(
@@ -18,31 +51,16 @@ class ChartWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Histori Kelembapan',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            Text('Penyiraman Berikutnya', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 12),
-            SizedBox(
-              height: 180,
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(show: false),
-                  titlesData: FlTitlesData(show: true),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: List.generate(dummyHistory.length, (index) =>
-                          FlSpot(index.toDouble(), dummyHistory[index])),
-                      isCurved: true,
-                      color: Color(0xFFA8E6CF),
-                      barWidth: 3,
-                      dotData: FlDotData(show: true),
-                      belowBarData: BarAreaData(show: true, color: Color(0x33A8E6CF)),
-                    ),
-                  ],
-                ),
-              ),
+            Text(
+              mainText,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
+            SizedBox(height: 8),
+            Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+            if (description.isNotEmpty)
+              Text(description, style: TextStyle(color: Colors.grey)),
           ],
         ),
       ),

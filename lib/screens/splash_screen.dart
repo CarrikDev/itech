@@ -21,10 +21,12 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _initApp() async {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Inisialisasi layanan latar belakang
     await NotificationService.init();
     await MqttService().connect();
 
-    // Tunggu 5 detik (sesuaikan dengan durasi animasi)
+    // Tunggu minimal 2 detik (agar animasi terlihat), maksimal 5 detik
     await Future.delayed(const Duration(seconds: 5));
 
     if (!mounted) return;
@@ -36,17 +38,21 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
 
     return Scaffold(
-      backgroundColor: Colors.white, // ✅ Latar belakang putih polos
+      backgroundColor: Colors.white,
       body: Center(
         child: SizedBox(
-          width: 300, // sesuaikan ukuran sesuai animasi Anda
-          height: 300,
+          width: 240,
+          height: 240,
           child: Lottie.asset(
-            'assets/animations/itech_green_drop.json', // ganti nama file sesuai yang Anda konversi
-            repeat: false, // jangan loop
+            'assets/animations/itech_green_drop.json',
+            repeat: false,
             fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return Icon(Icons.cloud_off, size: 64, color: Colors.grey);
+            },
           ),
         ),
       ),

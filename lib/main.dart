@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'api/mqtt_service.dart';
 
 // Screens
 import 'screens/splash_screen.dart';
 import 'screens/schedule_screen.dart';
 import 'screens/settings_screen.dart';
-import 'screens/timer_screen.dart';
 // ControllerScreen dihapus karena menu pindah ke FAB
 
 // Providers
@@ -53,6 +53,9 @@ final ThemeData appTheme = ThemeData(
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id', null);
+
+  final mqtt = MqttService();
+  await mqtt.connect();
   
   runApp(const MyApp());
 }
@@ -72,7 +75,6 @@ class MyApp extends StatelessWidget {
         home: SplashScreen(),
         routes: {
           '/schedule': (context) => ScheduleScreen(),
-          '/timer': (context) => TimerScreen(),
           '/settings': (context) => SettingsScreen(),
         },
       ),

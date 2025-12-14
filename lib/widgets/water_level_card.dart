@@ -1,29 +1,53 @@
-// lib/widgets/water_tank_card.dart
+// lib/widgets/water_level_card.dart
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class WaterTankCard extends StatelessWidget {
+class WaterLevelCard extends StatefulWidget {
   final int level; // dalam ml
 
-  const WaterTankCard({Key? key, required this.level}) : super(key: key);
+  const WaterLevelCard({Key? key, required this.level}) : super(key: key);
+
+  @override
+  State<WaterLevelCard> createState() => _WaterLevelCardState();
+}
+
+class _WaterLevelCardState extends State<WaterLevelCard> {
+  int _tankCapacity = 1000; // default
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTankCapacity();
+  }
+
+  Future<void> _loadTankCapacity() async {
+    final prefs = await SharedPreferences.getInstance();
+    final capacity = prefs.getInt('tank_capacity_ml') ?? 1000;
+    if (mounted) {
+      setState(() {
+        _tankCapacity = capacity;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final double fillRatio = _tankCapacity > 0
+        ? (widget.level / _tankCapacity).clamp(0.0, 1.0)
+        : 0.0;
+
     String statusText;
     Color statusColor;
-    Color tankColor;
 
-    if (level <= 0) {
+    if (widget.level <= 0) {
       statusText = 'Air Habis! Isi Ulang';
       statusColor = Colors.red;
-      tankColor = Colors.red.withOpacity(0.3);
-    } else if (level < 100) {
+    } else if (widget.level < 100) {
       statusText = 'Air Hampir Habis!';
       statusColor = Colors.orange;
-      tankColor = Colors.orange.withOpacity(0.3);
     } else {
       statusText = 'Air Masih Cukup';
       statusColor = Colors.green;
-      tankColor = Colors.green.withOpacity(0.2);
     }
 
     return Card(
@@ -43,7 +67,6 @@ class WaterTankCard extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.bottomCenter,
                 children: [
-                  // Tabung luar
                   Container(
                     width: 60,
                     decoration: BoxDecoration(
@@ -51,13 +74,13 @@ class WaterTankCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  // Isi air
+                  // Isi air — sesuai kapasitas sebenarnya
                   FractionallySizedBox(
-                    heightFactor: level <= 0 ? 0.01 : (level / 1000).clamp(0.0, 1.0),
+                    heightFactor: fillRatio,
                     child: Container(
                       width: 56,
                       decoration: BoxDecoration(
-                        color: tankColor,
+                        color: statusColor.withOpacity(0.3),
                         borderRadius: BorderRadius.only(
                           bottomLeft: Radius.circular(6),
                           bottomRight: Radius.circular(6),
@@ -70,8 +93,13 @@ class WaterTankCard extends StatelessWidget {
             ),
             SizedBox(height: 8),
             Text(
-              '$level ml',
+              '${widget.level} ml',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Dari $_tankCapacity ml • ${(fillRatio * 100).toInt()}%',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             SizedBox(height: 4),
             Text(

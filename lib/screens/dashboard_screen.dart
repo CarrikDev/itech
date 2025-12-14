@@ -1,15 +1,19 @@
 // lib/screens/dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:provider/provider.dart';
+
 import 'package:itech/api/weather_api.dart';
 import 'package:itech/api/mqtt_service.dart';
 import '../providers/sensor_provider.dart';
 import '../widgets/moisture_card.dart';
-import '../widgets/water_tank_card.dart';
+import '../widgets/water_level_card.dart';
 import '../widgets/weather_forecast_card.dart';
 import '../widgets/chart_widget.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
+
+const Color primaryColor = Color(0xFFA8E6CF);
+const Color secondaryColor = Color(0xFFFFD3B6);
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -19,10 +23,16 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   late Future<WeatherData?> _weatherFuture;
 
+  // ✅ Hapus semua state lokal untuk mode/jadwal — semua akan datang dari MQTT
+  // SensorProvider akan menyediakan: mode, nextWatering, dll.
+
   @override
   void initState() {
     super.initState();
     _weatherFuture = WeatherApi.fetchWeather();
+
+    // ✅ Pastikan SensorProvider sudah subscribe ke topik status MQTT
+    // Misal: MqttService().subscribe('iot/plant/status', (payload) { ... });
   }
 
   void _showSnackBar(String message) {
@@ -36,9 +46,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final sensor = Provider.of<SensorProvider>(context);
     final avg7Days = (sensor.soilMoisture * 0.9 + 10).clamp(0.0, 100.0);
 
+    // ✅ Ambil mode langsung dari sensor (yang diupdate via MQTT)
+    String displayMode;
+    switch (sensor.mode) {
+      case 'moisture':
+        displayMode = 'Deteksi Kelembapan';
+        break;
+      case 'daily':
+        displayMode = 'Harian';
+        break;
+      case 'timer':
+        displayMode = 'Timer';
+        break;
+      default:
+        displayMode = 'Tidak Diketahui';
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Smart Garden'),
+        title: Text('ITech: GreenDrop'),
         centerTitle: false,
         leading: Icon(Icons.park, color: primaryColor),
         actions: [
@@ -64,6 +90,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           setState(() {
             _weatherFuture = WeatherApi.fetchWeather();
           });
+          // ❌ Tidak perlu load settings — semua data real-time dari MQTT
         },
         child: SingleChildScrollView(
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -77,7 +104,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Mode: ${sensor.mode.capitalize()}',
+                  'Mode: $displayMode',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Colors.brown,
@@ -87,7 +114,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SizedBox(height: 16),
               MoistureCard(current: sensor.soilMoisture, average7Days: avg7Days),
               SizedBox(height: 16),
-              WaterTankCard(level: sensor.waterLevel),
+              WaterLevelCard(level: sensor.waterLevel),
               SizedBox(height: 16),
               FutureBuilder<WeatherData?>(
                 future: _weatherFuture,
@@ -118,7 +145,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 },
               ),
               SizedBox(height: 16),
-              ChartWidget(moisture: sensor.soilMoisture),
+              // ✅ ChartWidget hanya menerima data dari SensorProvider (yang diupdate via MQTT)
+              ChartWidget(
+                mode: sensor.mode,
+                nextWatering: sensor.nextWatering, // ISO8601 string dari IoT
+                titleLabel: sensor.eventTitle,
+                descriptionLabel: sensor.eventDescription,
+              ),
             ],
           ),
         ),
@@ -130,7 +163,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.black,
         spacing: 16,
         children: [
-          // 1. Siram Sekarang
           SpeedDialChild(
             child: Icon(Icons.water_drop),
             label: 'Siram Sekarang',
@@ -143,14 +175,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _showSnackBar('Perintah siram dikirim!');
             },
           ),
-          // 2. Penyiraman → arahkan ke /schedule sebagai halaman utama penyiraman
           SpeedDialChild(
-            child: Icon(Symbols.sprinkler), // atau Icons.auto_mode jika watering_can tidak dikenali
+            child: Icon(Symbols.sprinkler),
             label: 'Penyiraman',
             labelStyle: TextStyle(fontWeight: FontWeight.w600),
             onTap: () => Navigator.pushNamed(context, '/schedule'),
           ),
-          // 3. Pengaturan
           SpeedDialChild(
             child: Icon(Icons.settings),
             label: 'Pengaturan',
@@ -161,11 +191,4 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-}
-
-const Color primaryColor = Color(0xFFA8E6CF);
-const Color secondaryColor = Color(0xFFFFD3B6);
-
-extension on String {
-  String capitalize() => isEmpty ? this : '${this[0].toUpperCase()}${substring(1)}';
 }
