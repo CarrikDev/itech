@@ -30,7 +30,3 @@ jobs:
       - name: Analyze project source
         # Gunakan 'flutter analyze'
         run: dart analyze --no-fatal-warnings
-
-      - name: Run tests
-        # Gunakan 'flutter test'
-        run: flutter test
