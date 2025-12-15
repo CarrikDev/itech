@@ -184,7 +184,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onTap: () {
               MqttService().publishCommand({
                 'action': 'pump_on',
-                'duration_sec': 10,
+                'duration_sec': 3,
               });
 
               _showSnackBar('Perintah siram dikirim');

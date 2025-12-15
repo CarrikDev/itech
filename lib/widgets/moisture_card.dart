@@ -4,15 +4,17 @@ import 'package:flutter/material.dart';
 Color _getMoistureColor(double moisture) {
   // 0–20 = merah, 20–40 = oranye, 40–60 = kuning, >60 = hijau
   if (moisture <= 20) return Colors.red;
-  if (moisture <= 40) return Colors.orange;
-  if (moisture <= 60) return Colors.amber;
+  if (moisture <= 30) return Colors.orange;
+  if (moisture <= 45) return Colors.amber;
+  if (moisture <= 60) return Colors.greenAccent;
   return Colors.green;
 }
 
 String _getMoistureStatus(double moisture) {
   if (moisture <= 20) return 'Tanah sangat kering!';
-  if (moisture <= 40) return 'Tanah kering';
-  if (moisture <= 70) return 'Tanah lembab';
+  if (moisture <= 30) return 'Tanah kering';
+  if (moisture <= 45) return 'Tanah kurang lembab';
+  if (moisture <= 60) return 'Tanah lembab';
   return 'Tanah basah';
 }
 
