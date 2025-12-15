@@ -29,7 +29,7 @@ jobs:
 
       - name: Analyze project source
         # Gunakan 'flutter analyze'
-        run: flutter analyze
+        run: dart analyze --fatal-errors
 
       - name: Run tests
         # Gunakan 'flutter test'
