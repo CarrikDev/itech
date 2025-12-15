@@ -18,7 +18,8 @@ class ChartWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String mainText;
-    String title = titleLabel ?? 'Penyiraman Berikutnya';
+    // String title = titleLabel ?? 'Penyiraman Berikutnya';
+    String title = titleLabel ?? 'Fitur ini belum tersedia!';
     String description = descriptionLabel ?? '';
 
     if (mode == 'moisture') {
@@ -26,7 +27,7 @@ class ChartWidget extends StatelessWidget {
       title = 'Deteksi Kelembapan';
       description = 'Penyiraman akan dilakukan ketika kelembapan terdeteksi kering';
     } else if (nextWatering == null) {
-      mainText = '--:--';
+      mainText = 'Coming Soon!';
     } else {
       try {
         final target = DateTime.parse(nextWatering!);
@@ -41,7 +42,7 @@ class ChartWidget extends StatelessWidget {
           mainText = '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
         }
       } catch (e) {
-        mainText = '--:--';
+        mainText = 'Coming Soon!';
       }
     }
 
@@ -55,7 +56,7 @@ class ChartWidget extends StatelessWidget {
             SizedBox(height: 12),
             Text(
               mainText,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.yellow),
             ),
             SizedBox(height: 8),
             Text(title, style: TextStyle(fontWeight: FontWeight.bold)),

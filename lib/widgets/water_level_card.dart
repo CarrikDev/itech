@@ -1,110 +1,92 @@
-// lib/widgets/water_level_card.dart
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-class WaterLevelCard extends StatefulWidget {
-  final int level; // dalam ml
+class WaterLevelCard extends StatelessWidget {
+  final bool isWaterOk;
 
-  const WaterLevelCard({Key? key, required this.level}) : super(key: key);
-
-  @override
-  State<WaterLevelCard> createState() => _WaterLevelCardState();
-}
-
-class _WaterLevelCardState extends State<WaterLevelCard> {
-  int _tankCapacity = 1000; // default
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTankCapacity();
-  }
-
-  Future<void> _loadTankCapacity() async {
-    final prefs = await SharedPreferences.getInstance();
-    final capacity = prefs.getInt('tank_capacity_ml') ?? 1000;
-    if (mounted) {
-      setState(() {
-        _tankCapacity = capacity;
-      });
-    }
-  }
+  const WaterLevelCard({
+    Key? key,
+    required this.isWaterOk,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final double fillRatio = _tankCapacity > 0
-        ? (widget.level / _tankCapacity).clamp(0.0, 1.0)
-        : 0.0;
-
-    String statusText;
-    Color statusColor;
-
-    if (widget.level <= 0) {
-      statusText = 'Air Habis! Isi Ulang';
-      statusColor = Colors.red;
-    } else if (widget.level < 100) {
-      statusText = 'Air Hampir Habis!';
-      statusColor = Colors.orange;
-    } else {
-      statusText = 'Air Masih Cukup';
-      statusColor = Colors.green;
-    }
+    final Color statusColor = isWaterOk ? Colors.green : Colors.red;
+    final String statusText =
+        isWaterOk ? 'Air Cukup' : 'Air Habis – Isi Ulang';
+    final IconData statusIcon =
+        isWaterOk ? Icons.water_drop : Icons.warning_amber_rounded;
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(16),
+        child: Row(
           children: [
-            Text(
-              'Volume Air',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            /// ICON STATUS
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                statusIcon,
+                color: statusColor,
+                size: 32,
+              ),
             ),
-            SizedBox(height: 12),
-            // Visual tabung air
-            SizedBox(
-              height: 100,
-              child: Stack(
-                alignment: Alignment.bottomCenter,
+
+            const SizedBox(width: 16),
+
+            /// TEXT
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 60,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey, width: 2),
-                      borderRadius: BorderRadius.circular(8),
+                  const Text(
+                    'Level Air',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  // Isi air — sesuai kapasitas sebenarnya
-                  FractionallySizedBox(
-                    heightFactor: fillRatio,
-                    child: Container(
-                      width: 56,
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.3),
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(6),
-                          bottomRight: Radius.circular(6),
-                        ),
-                      ),
+                  const SizedBox(height: 6),
+                  Text(
+                    statusText,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Sensor pelampung',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              '${widget.level} ml',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Dari $_tankCapacity ml • ${(fillRatio * 100).toInt()}%',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            SizedBox(height: 4),
-            Text(
-              statusText,
-              style: TextStyle(color: statusColor, fontWeight: FontWeight.w600),
+
+            /// INDICATOR
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                isWaterOk ? 'OK' : 'EMPTY',
+                style: TextStyle(
+                  color: statusColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
             ),
           ],
         ),

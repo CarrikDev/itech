@@ -3,21 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
+
 import 'api/mqtt_service.dart';
+import 'services/notification_service.dart';
 
 // Screens
 import 'screens/splash_screen.dart';
-import 'screens/schedule_screen.dart';
 import 'screens/settings_screen.dart';
-// ControllerScreen dihapus karena menu pindah ke FAB
 
 // Providers
 import 'providers/sensor_provider.dart';
 
-// Warna & tema
-const Color primaryColor = Color(0xFFA8E6CF); // hijau pastel
-const Color secondaryColor = Color(0xFFFFD3B6); // kuning lembut
-const Color accentColor = Color(0xFFDCE775);   // kuning cerah lembut
+// ===============================
+// WARNA & TEMA
+// ===============================
+const Color primaryColor = Color(0xFFA8E6CF);
+const Color secondaryColor = Color(0xFFFFD3B6);
+const Color accentColor = Color(0xFFDCE775);
 const Color backgroundColor = Colors.white;
 
 final ThemeData appTheme = ThemeData(
@@ -35,15 +37,18 @@ final ThemeData appTheme = ThemeData(
     ),
   ),
   textTheme: GoogleFonts.poppinsTextTheme().copyWith(
-    headlineSmall: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold),
-    titleMedium: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
-    bodyMedium: GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
+    headlineSmall:
+        GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold),
+    titleMedium:
+        GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
+    bodyMedium:
+        GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
   ),
-  cardTheme: CardThemeData( // ✅ BENAR
+  cardTheme: CardThemeData(
     color: Colors.white,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
   ),
-  floatingActionButtonTheme: FloatingActionButtonThemeData(
+  floatingActionButtonTheme: const FloatingActionButtonThemeData(
     backgroundColor: primaryColor,
     foregroundColor: Colors.black,
     elevation: 4,
@@ -52,11 +57,17 @@ final ThemeData appTheme = ThemeData(
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🌍 Locale (AMAN)
   await initializeDateFormatting('id', null);
 
+  // 🔔 WAJIB: NOTIFICATION INIT
+  await NotificationService.init();
+
+  // 🔌 MQTT CONNECT (DIREKOMENDASIKAN)
   final mqtt = MqttService();
   await mqtt.connect();
-  
+
   runApp(const MyApp());
 }
 
@@ -72,9 +83,10 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Smart Garden',
         theme: appTheme,
+        debugShowCheckedModeBanner: false,
         home: SplashScreen(),
         routes: {
-          '/schedule': (context) => ScheduleScreen(),
+          // '/schedule': (context) => ScheduleScreen(),
           '/settings': (context) => SettingsScreen(),
         },
       ),

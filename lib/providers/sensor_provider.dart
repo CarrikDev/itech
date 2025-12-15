@@ -1,94 +1,115 @@
-// lib/providers/sensor_provider.dart
 import 'package:flutter/foundation.dart';
-import 'package:itech/api/mqtt_service.dart';
+import '../api/mqtt_service.dart';
 import '../services/notification_service.dart';
 
-// ✅ Tambahkan class CalendarEvent di sini
-class CalendarEvent {
-  final String id;
-  final String title;
-  final String description;
-  final DateTime dateTime;
-  final bool pinned;
-
-  CalendarEvent({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.dateTime,
-    this.pinned = false,
-  });
-}
-
 class SensorProvider with ChangeNotifier {
-  double _soilMoisture = 0;
-  int _waterLevel = 0;
-  String _mode = 'unknown';
+  // =====================
+  // STATE
+  // =====================
+  double _soilMoisture = 0.0;
+  bool _waterLevelOk = true; // default aman
   bool _isOnline = false;
   DateTime _lastUpdate = DateTime.now();
 
-  String? _nextWatering;
-  String? _eventTitle;
-  String? _eventDescription;
-  List<CalendarEvent> _calendarEvents = []; // ✅ Tambahkan field
+  // 🔑 untuk edge detection (notif hanya saat berubah)
+  bool _lastWaterLevelOk = true;
 
+  // =====================
+  // GETTER
+  // =====================
   double get soilMoisture => _soilMoisture;
-  int get waterLevel => _waterLevel;
-  String get mode => _mode;
+  bool get waterLevelOk => _waterLevelOk;
   bool get isOnline => _isOnline;
   DateTime get lastUpdate => _lastUpdate;
-  String? get nextWatering => _nextWatering;
-  String? get eventTitle => _eventTitle;
-  String? get eventDescription => _eventDescription;
-  List<CalendarEvent> get calendarEvents => _calendarEvents; // ✅ Tambahkan getter
 
+  // =====================
+  // CONSTRUCTOR
+  // =====================
   SensorProvider() {
     _listenToMqtt();
   }
 
+  // =====================
+  // MQTT LISTENER
+  // =====================
   void _listenToMqtt() {
     final mqtt = MqttService();
-    
-    mqtt.sensorStream.listen((data) {
-      _soilMoisture = (data['soil_moisture'] as num).toDouble();
-      _waterLevel = data['water_level'] as int;
-      notifyListeners();
-      _checkNotifications();
-    });
 
     mqtt.statusStream.listen((data) {
-      _mode = data['mode'] as String;
-      _isOnline = data['is_online'] as bool;
-      _lastUpdate = DateTime.parse(data['last_update']);
-
-      _nextWatering = data['next_watering'] as String?;
-      _eventTitle = data['event_title'] as String?;
-      _eventDescription = data['event_description'] as String?;
-
-      // ✅ Baca calendar_events dari payload MQTT
-      if (data.containsKey('calendar_events')) {
-        final events = (data['calendar_events'] as List)
-            .map((e) => CalendarEvent(
-                  id: e['id'],
-                  title: e['title'],
-                  description: e['description'],
-                  dateTime: DateTime.parse(e['datetime']),
-                  pinned: e['pinned'] ?? false,
-                ))
-            .toList();
-        _calendarEvents = events;
+      // =====================
+      // SOIL MOISTURE
+      // =====================
+      if (data.containsKey('soil_moisture')) {
+        final raw = data['soil_moisture'];
+        if (raw is num) {
+          _soilMoisture = raw.toDouble();
+        }
       }
+
+      // =====================
+      // WATER LEVEL (PELAMPUNG)
+      // TOLERAN: bool / int / string
+      // =====================
+      if (data.containsKey('water_available')) {
+        final raw = data['water_available'];
+
+        if (raw is bool) {
+          _waterLevelOk = raw;
+        } else if (raw is num) {
+          _waterLevelOk = raw == 1;
+        } else if (raw is String) {
+          _waterLevelOk = raw.toLowerCase() == 'true';
+        }
+
+        debugPrint(
+          'MQTT water_available raw=$raw -> parsed=$_waterLevelOk',
+        );
+      }
+
+      // =====================
+      // ONLINE STATUS
+      // =====================
+      if (data.containsKey('is_online')) {
+        final raw = data['is_online'];
+        if (raw is bool) {
+          _isOnline = raw;
+        }
+      }
+
+      _lastUpdate = DateTime.now();
+
+      // 🔔 NOTIFICATION CHECK (SEBELUM notifyListeners)
+      _checkNotifications();
 
       notifyListeners();
     });
   }
 
+  // =====================
+  // NOTIFICATION LOGIC
+  // =====================
   void _checkNotifications() {
+    // =====================
+    // TANAH KERING
+    // =====================
     if (_soilMoisture < 20) {
-      NotificationService.show('Tanah Kering!', 'Kelembapan sangat rendah. Siram sekarang!');
+      NotificationService.show(
+        'Tanah Kering',
+        'Kelembapan tanah rendah. Disarankan menyiram.',
+      );
     }
-    if (_waterLevel < 100) {
-      NotificationService.show('Air Habis!', 'Tangki hampir kosong!');
+
+    // =====================
+    // AIR HABIS (EDGE ONLY)
+    // =====================
+    if (_lastWaterLevelOk == true && _waterLevelOk == false) {
+      NotificationService.show(
+        'Air Habis',
+        'Tangki air kosong. Pompa dinonaktifkan.',
+      );
     }
+
+    // update state terakhir
+    _lastWaterLevelOk = _waterLevelOk;
   }
 }

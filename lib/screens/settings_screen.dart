@@ -16,8 +16,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _mqttUserController = TextEditingController();
   final TextEditingController _mqttPasswordController = TextEditingController();
   final TextEditingController _moistureThresholdController = TextEditingController();
-  final TextEditingController _waterThresholdController = TextEditingController();
-  final TextEditingController _tankCapacityController = TextEditingController();
 
   @override
   void initState() {
@@ -36,8 +34,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _mqttUserController.text = prefs.getString('mqtt_user') ?? '';
       _mqttPasswordController.text = prefs.getString('mqtt_password') ?? '';
       _moistureThresholdController.text = prefs.getInt('moisture_threshold')?.toString() ?? '20';
-      _waterThresholdController.text = prefs.getInt('water_threshold')?.toString() ?? '100';
-      _tankCapacityController.text = prefs.getInt('tank_capacity_ml')?.toString() ?? '1000';
     });
   }
 
@@ -50,8 +46,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     if (!_isValidNumber(_moistureThresholdController.text) ||
-        !_isValidNumber(_waterThresholdController.text) ||
-        !_isValidNumber(_tankCapacityController.text) ||
         !_isValidNumber(_mqttPortController.text)) {
       _showError('Pastikan semua nilai numerik valid!');
       return;
@@ -66,8 +60,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString('mqtt_user', _mqttUserController.text.trim());
     await prefs.setString('mqtt_password', _mqttPasswordController.text.trim());
     await prefs.setInt('moisture_threshold', int.parse(_moistureThresholdController.text.trim()));
-    await prefs.setInt('water_threshold', int.parse(_waterThresholdController.text.trim()));
-    await prefs.setInt('tank_capacity_ml', int.parse(_tankCapacityController.text.trim()));
 
     _showSuccess('Pengaturan disimpan!');
   }
@@ -144,23 +136,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               decoration: InputDecoration(
                 labelText: 'Threshold Kelembapan (%)',
                 helperText: 'Notifikasi jika kelembapan < nilai ini',
-              ),
-            ),
-            TextField(
-              controller: _waterThresholdController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Threshold Air (ml)',
-                helperText: 'Notifikasi jika air < nilai ini',
-              ),
-            ),
-            SizedBox(height: 24),
-            TextField(
-              controller: _tankCapacityController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Kapasitas Tangki (ml)',
-                helperText: 'Volume maksimal tangki air',
               ),
             ),
             SizedBox(height: 24),

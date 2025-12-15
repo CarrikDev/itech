@@ -1,26 +1,33 @@
-// lib/services/notification_service.dart
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
-  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  static final _notifications = FlutterLocalNotificationsPlugin();
 
   static Future<void> init() async {
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-    );
-    await _notificationsPlugin.initialize(initializationSettings);
+    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const settings = InitializationSettings(android: android);
+
+    await _notifications.initialize(settings);
   }
 
-  static Future<void> show(String title, String body) async {
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'smart_garden_channel',
-        'Smart Garden Alerts',
-        importance: Importance.max,
-        priority: Priority.high,
-      ),
+  static Future<void> show(
+    String title,
+    String body,
+  ) async {
+    const androidDetails = AndroidNotificationDetails(
+      'water_alert',
+      'Water Alert',
+      importance: Importance.max,
+      priority: Priority.high,
     );
-    await _notificationsPlugin.show(0, title, body, platformChannelSpecifics);
+
+    const details = NotificationDetails(android: androidDetails);
+
+    await _notifications.show(
+      0,
+      title,
+      body,
+      details,
+    );
   }
 }
